@@ -60,6 +60,7 @@
                     <select class="form-control"  id='expirationDates' name='expirationDates' >
                     </select>
                 </div>
+                <div class="col-3" id = "callOrPutToggle"></div>
             <!-- OPTIONS CHAIN TABLE -->
             <div class="container-fluid padding-32">
                 <div class="container-fluid padding-1 mt-3 info-text">
@@ -67,10 +68,8 @@
                         <thead>
                             <tr>
                                 <th class=noPadding4>STRIKE</th>
-                                <th class=noPadding4>CALL PREMIUM</th>
-                                <th class=noPadding4>CALL DELTA</th>
-                                <th class=noPadding4>PUT PREMIUM</th>
-                                <th class=noPadding4>PUT DELTA</th>
+                                <th class=noPadding4>PREMIUM</th>
+                                <th class=noPadding4>DELTA</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -104,16 +103,16 @@
                 <h4 id="leg1Detail">Leg1:</h4>
             </div>
             <div class="col-auto">
-                <h4 class="not-bold">Expiration: 12/1</h4>
+                <h4 id=selected_expiration class="not-bold">Expiration: 12/1</h4>
             </div>        
             <div class="col-auto">
-                <h4 class="not-bold">BUY CALL</h4>
+                <h4 id=selected_option_type class="not-bold">BUY CALL</h4>
             </div>        
             <div class="col-auto">
-                <h4 class="not-bold">Strike: 250</h4>
+                <h4 id=selected_strike class="not-bold">Strike: 250</h4>
             </div>        
             <div class="col-auto">
-                <h4 class="not-bold">Premium 3.50</h4>
+                <h4 id=selected_premium class="not-bold">Premium 3.50</h4>
             </div>        
         </div> <!--row-->
         <!--  Get Action Buttons Row 1 -->

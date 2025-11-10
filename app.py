@@ -88,12 +88,6 @@ def getExpirationDates():
             "items": expDates
     })
 
-def getPutValuesForCallStrike(call_strike, puts):
-    for p in puts:
-        if p[0] == call_strike:
-            return p[1],p[2]
-    return None, None
-
 @app.route('/getOptionsChain', methods=['POST'])
 def getOptionsChain():
     print("### getOptionsChain ###")
@@ -103,35 +97,25 @@ def getOptionsChain():
         data = request.get_json(force=True)
         ticker_symbol = data['ticker_symbol']
         exp_date = data['exp_date']
-        print('ticker_symbol:',ticker_symbol,'exp_date:',exp_date)
+        calls_or_puts = data['calls_or_puts']
+        print('ticker_symbol:',ticker_symbol,'exp_date:',exp_date, 
+              'call_or_puts:',calls_or_puts)
     except Exception as e:
         print("NO CONTENT",e)
         return jsonify({
              "data": []
          })
     # output_list = []
-    # row = {'STRIKE':123, 'PREMIUM':456, 'DELTA':789}
-    # output_list.append(row)
-    # return jsonify({
-    #         "data": output_list
-    # })
     _, stock_ticker =  get_ticker_quote(ticker_symbol)
     chain = list_options_chain(stock_ticker, exp_date)
     # COMBINE Calls and Puts on same line - only strike in CALLS
     # need to add STRIKE, PREMIUM and DELTA to the data
     output_list = []
-    for item in chain['CALLS']:
+    for item in chain[calls_or_puts]:
         strike = item[0]
-        premium1 = item[1]
-        delta1 = item[2]
-        # get the put values
-        premimum2,delta2 = getPutValuesForCallStrike(strike, chain['PUTS'])
-        if not premimum2:
-            premimum2 = 0
-            delta2 = 0
-
-        row = {'STRIKE':strike, 'PREMIUM1':premium1, 'DELTA1':delta1,
-               'PREMIUM2':premimum2, 'DELTA2':delta2}
+        premium = item[1]
+        delta = item[2]
+        row = {'STRIKE':strike, 'PREMIUM':premium, 'DELTA':delta}
         output_list.append(row)
     # print(output_list)
     return jsonify({

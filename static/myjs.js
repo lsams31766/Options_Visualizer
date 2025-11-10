@@ -4,6 +4,30 @@
 
 var cur_stock_ticker = 'TSLA';
 var cur_exp_date = '2025-11-21';
+var callOrPutSelection = 'CALLS'; // for options chain table 
+
+function setLegDetails(strike, premium) {
+    console.log('setLegDetails',strike, premium)
+    // TODO
+    // set selected_expiration, selected_option_type, 
+    // selected_strike, selected_premium
+    var h4Element = document.querySelector('#selected_expiration')
+    h4Element.innerHTML = 'Expiration:<nbsp>' + cur_exp_date;
+
+    h4Element = document.querySelector('#selected_option_type')
+    var s = 'CALL';
+    if (callOrPutSelection == 'PUTS') {
+        s = 'PUT'
+    }
+    h4Element.innerHTML = s
+
+    h4Element = document.querySelector('#selected_strike')
+    h4Element.innerHTML = 'Strike:<nbsp>' + String(strike);
+
+    h4Element = document.querySelector('#selected_premium')
+    h4Element.innerHTML = 'Premium:<nbsp>' + premium;
+}
+
 
 $(document).ready( () => {
     $('#getPrice').click(function(){
@@ -45,9 +69,11 @@ $(document).ready( () => {
             "data": function (d) {
                 // Add any extra data you want to send in the POST request
                 // For example, to send a search term from an input field:
+                // TODO provide number of strikes to show
                 return JSON.stringify($.extend({}, d, {
                     ticker_symbol: cur_stock_ticker,
-                    exp_date: cur_exp_date
+                    exp_date: cur_exp_date,
+                    calls_or_puts: callOrPutSelection
                 }));
             },
             "dataSrc": "data" // Specify the property in the JSON response containing the data array
@@ -55,10 +81,19 @@ $(document).ready( () => {
 
         columns: [
             { "data": "STRIKE" },
-            { "data": "PREMIUM1" },
-            { "data": "DELTA1" },
-            { "data": "PREMIUM2" },
-            { "data": "DELTA2" }
+//            { "data": "PREMIUM" },
+            { "data": "PREMIUM",
+                        "orderable": true,
+                        "searchable": false,
+                        "render": function(data,type,row,meta) { 
+                            
+                            var params = "(" + row.STRIKE + "," + row.PREMIUM + ")" 
+                            var a = '<a onclick="setLegDetails' + params +   '" href="javascript:void(0)">' + row.PREMIUM + '</a>'
+
+                            return a;
+                        }
+                },
+            { "data": "DELTA" }
         ]
     });
 
@@ -86,8 +121,11 @@ $(document).ready( () => {
                     option.value = i;
                     $("#expirationDates").append(option)
                 }
+                // set selcted expiration date to 1st entry
+                cur_exp_date = data.items[0]
             })
             .catch(console.error);
+   
         updateOptionsChain()
     }
     
@@ -96,7 +134,37 @@ $(document).ready( () => {
         $('#callsOptionsChain').DataTable().ajax.reload();
     } 
 
+    const makeCallOrPutToggle = () => {
+        // from https://www.cssscript.com/inline-toggle-button-buttonstrip/
+        var instance = new ButtonStrip({
+            id: 'buttonStrip-viewToggle'
+        });
+        instance.addButton('Calls', true, 'click', function(){
+            if (callOrPutSelection == 'CALLS' ) {
+                return;
+            }    
+            callOrPutSelection = 'CALLS';
+            // $('#je_rules').empty();
+            // $("#outputText").html("Text View");
+            updateOptionsChain();
+        });
+        instance.addButton('PUTS', false, 'click', function(){
+            console.log('Tree View toggle');
+            if (callOrPutSelection == 'Puts' ) {
+                return;
+            }    
+            callOrPutSelection = 'PUTS';
+            // $("#je_rules").show();
+            // $("#outputText").html("Tree View");
+            updateOptionsChain();
+        });
+        // TODO - call GetOptionsTable with Call or Put value
+        instance.append('#callOrPutToggle');
+    }
+
+
     loadListBoxes();
+    makeCallOrPutToggle();
 })
 
 const loadListBoxes = () => {
@@ -162,4 +230,5 @@ const getPrice = () => {
         })
         .catch(console.error);
 }
+
 
