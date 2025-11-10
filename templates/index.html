@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Options Visualizer App{% endblock %}
+{% block content %}
+
+<div class="header-block text-center text-md-left w-100">
+    <div class="container">
+        <h2 class="header-text header-text-margin-no-left text-center">Options Visualizer</h2>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="container">  
+        <!-- Get Ticker and Underlying Price --> 
+        <div class="row py-2 pt-3">
+            <div class="col-2">
+                <h4>Ticker Symbol:</h4>
+            </div>
+            <div class="col-2">
+                <input class="form-control" id="tickerSymbol" placeholder="Ticker Symbol">
+            </div>
+            <div class="col-1">
+                <button id="getPrice" class="btn btn-primary">Go</button>
+            </div>
+            <div class="col-auto">
+                <h4 id="price">Price:</h4>
+            </div>
+            <div class="col-2">
+                <h4 id="priceVal" class="not-bold">0.00</h4>
+            </div>
+        </div> <!--row-->
+        <!--  Get Strategy -->
+        <div class="row py-2">
+            <div class="col-2">
+                <h4>Strategy:</h4>
+            </div>
+            <div class="col-auto">
+                <select class="form-control"  id='strategyList' name='strategyList' >
+                </select>
+            </div>
+        </div> <!--row-->
+        <!--  Show Strategy Selected -->
+        <div class="row py-2 pb-5">
+            <div class="col-auto">
+                <h4 id="stratSel">Strategy Selected:</h4>
+            </div>
+            <div class="col-auto">
+                <h4 id="strategySelected" class="not-bold" for="startSel">Sell Call</h4>
+            </div>        
+        </div> <!--row-->
+        <!-- OPTIONS CHAIN (to be moved to modal screen) -->
+        <div class="border border-primary border-5 ml-3">
+            <div class="col-auto text-center">
+                <button id="getOptionsChain" class="btn btn-primary">Load Options Chain</button>
+            </div>
+            <div class="row py-2 pb-5 m-3">
+                <div class="col-auto">
+                    <h4 id="stratSel">Expiration Dates:</h4>
+                </div>
+                <div class="col-auto">
+                    <select class="form-control"  id='expirationDates' name='expirationDates' >
+                    </select>
+                </div>
+            <!-- OPTIONS CHAIN TABLE -->
+            <div class="container-fluid padding-32">
+                <div class="container-fluid padding-1 mt-3 info-text">
+                    <table id="callsOptionsChain" class="table info-text display compact cell-border">
+                        <thead>
+                            <tr>
+                                <th class=noPadding4>STRIKE</th>
+                                <th class=noPadding4>CALL PREMIUM</th>
+                                <th class=noPadding4>CALL DELTA</th>
+                                <th class=noPadding4>PUT PREMIUM</th>
+                                <th class=noPadding4>PUT DELTA</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div> <!--row-->
+        </div>
+        <!--  Legs -->
+        <div class="row py-2">
+            <div class="col-auto">
+                <h4 id="nbrLegs">Legs in Strategy:</h4>
+            </div>
+            <div class="col-2">
+                <h4 class="not-bold" for="nbrLegs">1</h4>
+            </div>        
+        </div> <!--row-->
+        <!--  Leg 1 -->
+        <div class="row py-2">
+            <div class="col-auto">
+                <h4 id="legType">Leg1 Type:</h4>
+            </div>
+            <div class="col-auto">
+                <h4 class="not-bold" for="legType">Long Call</h4>
+            </div>        
+            <div class="col-3">
+                <button id="getOption" class="btn btn-primary">Select Option</button>
+            </div>
+        </div> <!--row-->
+        <div class="row py-2 pb-5">
+            <div class="col-auto">
+                <h4 id="leg1Detail">Leg1:</h4>
+            </div>
+            <div class="col-auto">
+                <h4 class="not-bold">Expiration: 12/1</h4>
+            </div>        
+            <div class="col-auto">
+                <h4 class="not-bold">BUY CALL</h4>
+            </div>        
+            <div class="col-auto">
+                <h4 class="not-bold">Strike: 250</h4>
+            </div>        
+            <div class="col-auto">
+                <h4 class="not-bold">Premium 3.50</h4>
+            </div>        
+        </div> <!--row-->
+        <!--  Get Action Buttons Row 1 -->
+        <div class="row py-2">
+            <div class="col-3">
+                <button id="showPNL" class="btn btn-success">PNL Chart</button>
+            </div>
+            <div class="col-3">
+                <button id="showProfit" class="btn btn-success">Future Profit Chart</button>
+            </div>
+        </div> <!--row-->
+        <!--  Get Action Buttons Row 2 -->
+        <div class="row py-2">
+            <div class="col-3">
+                <button id="saveTrade" class="btn btn-success">Save Trade</button>
+            </div>
+            <div class="col-3">
+                <button id="loadTrade" class="btn btn-success">Load Trade</button>
+            </div>
+        </div> <!--row-->
+        <!--  Get Action Buttons Row 3 -->
+        <div class="row py-2">
+            <div class="col-3">
+                <button id="clearAll" class="btn btn-danger">Clear ALL</button>
+            </div>
+        </div> <!--row-->
+
+    </div> <!--container-->
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='myjs.js') }}"></script></script>
+
+{% endblock %}
