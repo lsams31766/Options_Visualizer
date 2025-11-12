@@ -2,6 +2,45 @@
 {% block title %}Options Visualizer App{% endblock %}
 {% block content %}
 
+<!-- OPTIONS CHAIN (Modal Dialog) -->
+<dialog id="optionsChainModal" style="min-width: 800px" >
+    <div class="border">
+        <div class="row ml-3">
+<!--
+            <div class="col-auto text-center">
+                <button id="getOptionsChain" class="btn btn-primary">Load Options Chain</button>
+            </div>
+-->
+        </div>
+        <div class="row ml-3 pt-3">
+            <div class="col-auto">
+                <h4 id="stratSel">Expiration Dates:</h4>
+            </div>
+            <div class="col-3">
+                <select class="form-control"  id='expirationDates' name='expirationDates' >
+                </select>
+            </div>
+            <div class="col-4" id = "callOrPutToggle"></div>
+        </div>
+        <!-- OPTIONS CHAIN TABLE -->
+        <div class="row py-2 col-6 ml-3 justify-content-center">
+            <table id="callsOptionsChain" class="table info-text display compact cell-border">
+                <thead>
+                    <tr>
+                        <th class=noPadding4>STRIKE</th>
+                        <th class=noPadding4>PREMIUM</th>
+                        <th class=noPadding4>DELTA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="row ml-4 pb-3">
+            <button tabindex="1" type="button" class="btn btn-primary" name="closeButton" id="closeButton">Close</button>
+        </div>
+    </div>
+</dialog>
+
 <div class="header-block text-center text-md-left w-100">
     <div class="container">
         <h2 class="header-text header-text-margin-no-left text-center">Options Visualizer</h2>
@@ -47,36 +86,6 @@
                 <h4 id="strategySelected" class="not-bold" for="startSel">Sell Call</h4>
             </div>        
         </div> <!--row-->
-        <!-- OPTIONS CHAIN (to be moved to modal screen) -->
-        <div class="border border-primary border-5 ml-3">
-            <div class="col-auto text-center">
-                <button id="getOptionsChain" class="btn btn-primary">Load Options Chain</button>
-            </div>
-            <div class="row py-2 pb-5 m-3">
-                <div class="col-auto">
-                    <h4 id="stratSel">Expiration Dates:</h4>
-                </div>
-                <div class="col-auto">
-                    <select class="form-control"  id='expirationDates' name='expirationDates' >
-                    </select>
-                </div>
-                <div class="col-3" id = "callOrPutToggle"></div>
-            <!-- OPTIONS CHAIN TABLE -->
-            <div class="container-fluid padding-32">
-                <div class="container-fluid padding-1 mt-3 info-text">
-                    <table id="callsOptionsChain" class="table info-text display compact cell-border">
-                        <thead>
-                            <tr>
-                                <th class=noPadding4>STRIKE</th>
-                                <th class=noPadding4>PREMIUM</th>
-                                <th class=noPadding4>DELTA</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div> <!--row-->
-        </div>
         <!--  Legs -->
         <div class="row py-2">
             <div class="col-auto">
@@ -95,7 +104,7 @@
                 <h4 class="not-bold" for="legType">Long Call</h4>
             </div>        
             <div class="col-3">
-                <button id="getOption" class="btn btn-primary">Select Option</button>
+                <button id="getOption" class="btn btn-primary" disabled>Select Option</button>
             </div>
         </div> <!--row-->
         <div class="row py-2 pb-5">

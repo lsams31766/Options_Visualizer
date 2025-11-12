@@ -6,13 +6,15 @@ var cur_stock_ticker = 'TSLA';
 var cur_exp_date = '2025-11-21';
 var callOrPutSelection = 'CALLS'; // for options chain table 
 
+var dialog;
+
 function setLegDetails(strike, premium) {
     console.log('setLegDetails',strike, premium)
     // TODO
     // set selected_expiration, selected_option_type, 
     // selected_strike, selected_premium
     var h4Element = document.querySelector('#selected_expiration')
-    h4Element.innerHTML = 'Expiration:<nbsp>' + cur_exp_date;
+    h4Element.innerHTML = 'Expiration:&nbsp' + cur_exp_date;
 
     h4Element = document.querySelector('#selected_option_type')
     var s = 'CALL';
@@ -22,16 +24,22 @@ function setLegDetails(strike, premium) {
     h4Element.innerHTML = s
 
     h4Element = document.querySelector('#selected_strike')
-    h4Element.innerHTML = 'Strike:<nbsp>' + String(strike);
+    h4Element.innerHTML = 'Strike:&nbsp' + String(strike);
 
     h4Element = document.querySelector('#selected_premium')
-    h4Element.innerHTML = 'Premium:<nbsp>' + premium;
+    h4Element.innerHTML = 'Premium:&nbsp' + premium;
+    dialog.close();
 }
 
 
 $(document).ready( () => {
+    dialog = document.querySelector("dialog");
+
     $('#getPrice').click(function(){
         getPrice();
+        getOptionsChain();
+        updateOptionsChain();
+        $('#getOption').removeAttr('disabled');
     });
 
     $("#strategyList").change(function () {
@@ -59,6 +67,8 @@ $(document).ready( () => {
         paging: false,
         serverSide: true,
         searching: false,
+        autoWidth: false,
+        scrollY: '300px', 
         deferLoading: 0,  // Prevents the initial AJAX call
         // TODO fetch correct symbol and expiration date
         ajax: {
@@ -161,6 +171,15 @@ $(document).ready( () => {
         // TODO - call GetOptionsTable with Call or Put value
         instance.append('#callOrPutToggle');
     }
+
+    $('#getOption').click(function(){
+        dialog.showModal();
+    });
+
+    // "Close" button closes the dialog
+    $( "#closeButton").on( "click", () => {
+        dialog.close();
+    });
 
 
     loadListBoxes();
