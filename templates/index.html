@@ -83,7 +83,7 @@
                 <h4 id="stratSel">Strategy Selected:</h4>
             </div>
             <div class="col-auto">
-                <h4 id="strategySelected" class="not-bold" for="startSel">Sell Call</h4>
+                <h4 id="strategySelected" class="not-bold" for="startSel">Buy Call</h4>
             </div>        
         </div> <!--row-->
         <!--  Legs -->
@@ -101,7 +101,7 @@
                 <h4 id="legType">Leg1 Type:</h4>
             </div>
             <div class="col-auto">
-                <h4 class="not-bold" for="legType">Long Call</h4>
+                <h4 id=leg1TypeValue class="not-bold">Long Call</h4>
             </div>        
             <div class="col-3">
                 <button id="getOption" class="btn btn-primary" disabled>Select Option</button>
@@ -115,7 +115,7 @@
                 <h4 id=selected_expiration class="not-bold">Expiration: 12/1</h4>
             </div>        
             <div class="col-auto">
-                <h4 id=selected_option_type class="not-bold">BUY CALL</h4>
+                <h4 id=selected_option_type class="not-bold">CALL</h4>
             </div>        
             <div class="col-auto">
                 <h4 id=selected_strike class="not-bold">Strike: 250</h4>
@@ -124,19 +124,30 @@
                 <h4 id=selected_premium class="not-bold">Premium 3.50</h4>
             </div>        
         </div> <!--row-->
+        <!-- CHART (TODO make it display/not display)-->
+        <div class="container mt-4">
+            <div class="card" id="myChartContainer" style="display: none;">
+                <div class="card-header">
+                    PNL CHART
+                </div>
+                <div class="card-body" style="height: 400px;">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
         <!--  Get Action Buttons Row 1 -->
         <div class="row py-2">
             <div class="col-3">
-                <button id="showPNL" class="btn btn-success">PNL Chart</button>
+                <button id="showPNL" class="btn btn-success" disabled>PNL Chart</button>
             </div>
             <div class="col-3">
-                <button id="showProfit" class="btn btn-success">Future Profit Chart</button>
+                <button id="showProfit" class="btn btn-success" disabled>Future Profit Chart</button>
             </div>
         </div> <!--row-->
         <!--  Get Action Buttons Row 2 -->
         <div class="row py-2">
             <div class="col-3">
-                <button id="saveTrade" class="btn btn-success">Save Trade</button>
+                <button id="saveTrade" class="btn btn-success" disabled>Save Trade</button>
             </div>
             <div class="col-3">
                 <button id="loadTrade" class="btn btn-success">Load Trade</button>

@@ -6,7 +6,9 @@ from io import StringIO
 import os
 import operator
 
-from api import get_strategies, get_ticker_quote, list_expiration_dates, list_options_chain
+from api import get_strategies, get_ticker_quote, \
+  list_expiration_dates, list_options_chain, get_pnl
+from model import *
 
 #from models import *
 #from presentation import *
@@ -122,31 +124,121 @@ def getOptionsChain():
             "data": output_list
     })
 
+def extract_nbr(s):
+    # find first number or decimal in string
+    pos = -1
+    for i, c in enumerate(s):
+        if c.isdigit():
+            pos = i
+            break 
+    if pos == -1:
+        return 0
+    rest_of_str = s[pos:]
+    if '.' in rest_of_str:
+        return float(rest_of_str)
+    else:
+        return int(rest_of_str)
+
+
+# get_pnl
+@app.route('/getPnlTable', methods=['POST'])
+def getPnlTable():
+    print("### getPnlTable ###")
+    # data payload must include:
+    #   exp_date1, calls_or_puts1, strike_price1, premium1, strategy
+    #   cur_stock_price, buy_or_sell
+    try:
+        raw_data = request.data.decode('utf-8') 
+        print("raw_data",raw_data)
+        data = request.get_json(force=True)
+        print("data",data)
+        # todo allow multiple legs
+        exp_date1 = data['exp_date1']
+        calls_or_puts1 = data['calls_or_puts1']
+        if 'call' in calls_or_puts1.lower():
+            calls_or_puts1 = CALL_OR_PUT.CALL
+        else:
+            calls_or_puts1 = CALL_OR_PUT.PUT
+        # need to clean up some items
+        strike_price1 = extract_nbr(data['strike_price1'])
+        premium1 = extract_nbr(data['premium1'])
+        strategy = data['strategy']
+        strategy = strategy_str_to_obj(strategy)
+        cur_stock_price = extract_nbr(data['cur_stock_price'])
+        buy_or_sell = data['buy_or_sell']
+        if 'buy' in buy_or_sell.lower():
+            buy_or_sell = BUY_OR_SELL.BUY
+        else:
+            buy_or_sell = BUY_OR_SELL.SELL
+        print('Cleaned values',strike_price1,premium1,cur_stock_price)
+        print('exp_date1:',exp_date1,'calls_or_puts1:',calls_or_puts1,
+              'premium1:',premium1, 'strategy:',strategy)
+    except Exception as e:
+        print("NO CONTENT",e)
+        return jsonify({
+             "data": []
+         })
+    # make an optionsTrade object, get the pnl, return to caller
+    q = OptionsQuote()
+    # TODO allow for multiple legs
+    q.expiration_date = exp_date1
+    q.call_or_put = calls_or_puts1
+    q.strike_price = strike_price1
+    q.premium = premium1
+    q.underlying_price = cur_stock_price
+    oLeg = OptionsLeg()
+    oLeg.buy_or_sell = buy_or_sell
+    oLeg.options_quote = q 
+    oTrade = OptionsTrade()
+    oTrade.legs = [oLeg] # assume 1 leg for now
+    oTrade.strategy = strategy
+    pnl_table = get_pnl(oTrade)
+    # print(output_list)
+    return jsonify({
+            "data": pnl_table
+    })
+
 
 if __name__ == "__main__":
     app.debug = True
     app.run(host="0.0.0.0", port=8001, debug=True)
 
+    # s = 'Strike: 25'
+    # f = extract_nbr(s)
+    # print(f)
     # AAPL exp_date: 2025-12-05
     # FOR TESTING
-    '''
-    _, stock_ticker =  get_ticker_quote('AAPL')
-    chain = list_options_chain(stock_ticker, '2025-12-05')
-    output_list = []
-    for item in chain['CALLS']:
-        strike = item[0]
-        premium1 = item[1]
-        delta1 = item[2]
-        # get the put values
-        premimum2,delta2 = getPutValuesForCallStrike(strike, chain['PUTS'])
-        if not premimum2:
-            premimum2 = 0
-            delta2 = 0
+    # _, stock_ticker =  get_ticker_quote('AAPL')
+    # chain = list_options_chain(stock_ticker, '2025-12-05')
+    # output_list = []
+    # for item in chain['CALLS']:
+    #     strike = item[0]
+    #     premium1 = item[1]
+    #     delta1 = item[2]
 
-        row = {'STRIKE':strike, 'PREMIUM1':premium1, 'DELTA1':delta1,
-               'PREMIUM2':premimum2, 'DELTA2':delta2}
-        output_list.append(row)
-    for ol in output_list:
-        print(output_list)
-    '''
+    #     row = {'STRIKE':strike, 'PREMIUM1':premium1, 
+    #            'DELTA1':delta1,}
+    #     output_list.append(row)
+    # for ol in output_list:
+    #     print(output_list)
+    ###
+    # q = OptionsQuote()
+    # q.expiration_date = '2025-12-05'
+    # q.call_or_put = CALL_OR_PUT.CALL
+    # q.strike_price = chain['CALLS'][22][0]
+    # q.premium = chain['CALLS'][22][1]
+    # tickerSymbol = 'AAPL'
+    # price, stockTicker = get_ticker_quote(tickerSymbol)
+    # q.underlying_price = price
+    # oLeg = OptionsLeg()
+    # oLeg.buy_or_sell = BUY_OR_SELL.BUY
+    # oLeg.options_quote = q 
+    # oTrade = OptionsTrade()
+    # oTrade.legs = [oLeg] # assume 1 leg for now
+    # oTrade.strategy = Strategy.LONG_CALL
+    # pnl_table = get_pnl(oTrade)
+    # for line in pnl_table:
+    #     print(line)
+
+    
  

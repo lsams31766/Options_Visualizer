@@ -2,7 +2,7 @@
 #functions for external access to options data
 from yfinance_access import get_current_stock_price, get_expiration_dates
 from model import *
-from options_funcs import get_options_chain
+from options_funcs import get_options_chain, get_profit_and_loss
 
 def get_ticker_quote(ticker_name):
     # given ticker name as text, validate it exists, return underlying price
@@ -29,6 +29,16 @@ def list_expiration_dates(stock_ticker):
 def list_options_chain(stock_ticker, expiraton_date):
     # return optons chain as a dict (see options_funcs.py
     return get_options_chain(stock_ticker, expiraton_date)
+
+def get_pnl(optionsTrade):
+    # get profit and loss over various stock prices
+    # get_profit_and_loss(strategy, cur_stock_price, 
+    #     strike_price1, premium1, 
+    #     strike_price2=None, premium2=None,
+    #     strike_price3=None, premium3=None,
+    #     strike_price4=None, premium4=None):
+    pnl_table = get_profit_and_loss(optionsTrade)
+    return pnl_table
 
 def test():
     current_price, stock_ticker = get_current_stock_price('AAPL')

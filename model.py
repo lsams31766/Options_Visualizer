@@ -39,6 +39,27 @@ def get_strategy_str(strategy):
     else:
         return 'Unknown Strategy'    
     
+def strategy_str_to_obj(strStrategy):
+    strategy = Strategy.LONG_CALL
+    if strStrategy.lower() == 'call' or strStrategy.lower() == 'long call':
+        strategy = Strategy.LONG_CALL
+    if strStrategy.lower() == 'put' or strStrategy.lower() == 'long put':
+        strategy = Strategy.LONG_PUT
+    if strStrategy.lower() == 'sell call' or strStrategy.lower() == 'short call':
+        strategy = Strategy.SHORT_CALL
+    if strStrategy.lower() == 'sell put' or strStrategy.lower() == 'short put':
+        strategy = Strategy.SHORT_PUT
+    if strStrategy.lower() == 'credit sptread':
+        strategy = Strategy.CREDIT_SPREAD
+    if strStrategy.lower() == 'iron condor':
+        strategy = Strategy.IRON_CONDOR
+    if strStrategy.lower() == 'calendar sptread':
+        strategy = Strategy.CALENDAR_SPREAD
+    if strStrategy.lower() == 'collar':
+        strategy = Strategy.COLLAR
+    return strategy
+
+    
 
 # Options Strategies
 class CALL_OR_PUT(Enum):

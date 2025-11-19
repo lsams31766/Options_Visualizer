@@ -3,11 +3,16 @@
 
 
 var cur_stock_ticker = 'TSLA';
-var cur_exp_date = '2025-11-21';
+var cur_exp_date = '2025-12-19';
 var callOrPutSelection = 'CALLS'; // for options chain table 
-
+var pnlChartVisible = false;
 var dialog;
 
+
+// forward declare showPnlChart()
+let showPnlChart = function() {
+
+}
 function setLegDetails(strike, premium) {
     console.log('setLegDetails',strike, premium)
     // TODO
@@ -28,6 +33,13 @@ function setLegDetails(strike, premium) {
 
     h4Element = document.querySelector('#selected_premium')
     h4Element.innerHTML = 'Premium:&nbsp' + premium;
+
+    // enable pnl chart
+    $('#showPNL').removeAttr('disabled');
+    // not sure if this will work
+    if (pnlChartVisible == true) {
+        showPnlChart();
+    }
     dialog.close();
 }
 
@@ -46,6 +58,26 @@ $(document).ready( () => {
         // strategy changed
         console.log("strategy changed");
         setStrategy();
+        // set correct toggle in options chain
+        var strategy = $('#strategyList').find(":selected").text()
+        const callsElement = $('.strip-button-0')[0]
+        const putsElement = $('.strip-button-1')[0]
+        if (strategy == 'Put' || strategy =='Sell Put') {
+            // remove active-strip-button from class of strip-button-0
+            callsElement.classList.remove("active-strip-button");
+            // add active-strip-button to class of strip-button-1
+            putsElement.classList.add("active-strip-button");
+            callOrPutSelection = 'PUTS';
+        }
+        else {
+            // remove active-strip-button from class of strip-button-1
+            putsElement.classList.remove("active-strip-button");
+            // add active-strip-button to class of strip-button-0
+            callsElement.classList.add("active-strip-button");
+            callOrPutSelection = 'CALLS';
+        }
+        updateOptionsChain();
+        
      });
 
     
@@ -60,6 +92,14 @@ $(document).ready( () => {
         cur_exp_date = $('#expirationDates').find(":selected").text(); 
         $('#callsOptionsChain').DataTable().ajax.reload();
      });
+
+     $("#showPNL").click(function () {
+        // show Profit and Loss Chart
+        console.log("Show PNL chart");
+        showPnlChart();
+     });
+
+     
 
     var table = $('#callsOptionsChain').DataTable({
         info: false,
@@ -154,6 +194,8 @@ $(document).ready( () => {
                 return;
             }    
             callOrPutSelection = 'CALLS';
+            const putsElement = $('.strip-button-1')[0]
+            putsElement.classList.remove("active-strip-button");    
             // $('#je_rules').empty();
             // $("#outputText").html("Text View");
             updateOptionsChain();
@@ -164,6 +206,8 @@ $(document).ready( () => {
                 return;
             }    
             callOrPutSelection = 'PUTS';
+            const callsElement = $('.strip-button-0')[0]
+            callsElement.classList.remove("active-strip-button");    
             // $("#je_rules").show();
             // $("#outputText").html("Tree View");
             updateOptionsChain();
@@ -181,6 +225,111 @@ $(document).ready( () => {
         dialog.close();
     });
 
+    showPnlChart = () => {
+        // TODO 2 and more leg trades
+        console.log("showPnlChart")
+        const myDiv = document.getElementById('myChartContainer');
+        myDiv.style.display = 'block';
+        pnlChartVisible = true;
+        // MUST SEND:
+        //  exp_date1, calls_or_puts1, strike_price1, premium1, 
+        //  strategy, cur_stock_price, buy_or_sell
+        const strikePriceElement = document.querySelector('#selected_strike');
+        const strikePrice1 = strikePriceElement.innerText;
+
+        const PremiumElement = document.querySelector('#selected_premium');
+        const premium1 = PremiumElement.innerText;
+
+        const strategyElement = document.querySelector('#strategySelected');
+        const strategy = strategyElement.innerText;
+
+        const curStockPriceElement = document.querySelector('#priceVal');
+        const cur_stock_price = curStockPriceElement.innerText;
+        
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        const myRequest = new Request("getPnlTable", {
+            method: "post",
+            body: JSON.stringify({ 
+                exp_date1: cur_exp_date,
+                calls_or_puts1: strategy,
+                strike_price1: strikePrice1,
+                premium1: premium1,
+                strategy: strategy,
+                cur_stock_price: cur_stock_price,
+                buy_or_sell: strategy
+            }),
+            headers: myHeaders,
+            });
+    
+        fetch(myRequest)
+            // Convert response to text
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data.data);
+                // TODO put in the red and green fills!
+                prices = data.data[0];
+                values = data.data[1];
+                myChart.data.labels = [];
+                myChart.data.datasets.forEach((dataset) => {
+                    dataset.data = [];
+                });
+                myChart.data.labels = prices;
+                myChart.data.datasets[0].data = values;
+                myChart.update();
+            })
+            .catch(console.error);
+    }
+
+    var prices = [100,105,110,115,120,125,130,135,140,145];
+    var values = [-2.5,-2.5,-2,-1,0,1,1.5,2.5,2.5,2.5];
+
+    // THE CHART
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'line', // or 'line', 'pie', 'doughnut', etc.
+        data: {
+            labels: prices,
+            datasets: [{
+                label: 'Profit',
+                data: values,
+                backgroundColor: 'black',
+                borderColor: [
+                ],
+                borderWidth: 1,
+                fill: {
+                    target: 'origin',
+                    below: 'rgb(255, 0, 0)', // Red for areas below 0
+                    above: 'rgb(0, 255, 0)'  // Green for areas above 0
+                  }
+            }
+        ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Allows chart to resize freely
+            scales: {
+                y: {
+                    stacked: true,
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value, index, ticks) {
+                            return value.toFixed(2); // Formats the tick value to two decimal places
+                        }
+                    },
+                    grid: {
+                        color: (context) => {
+                            if(context.tick.value === 0) {
+                                return 'green'
+                            } else {
+                                return 'rgba(211, 211, 211)'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
 
     loadListBoxes();
     makeCallOrPutToggle();
@@ -222,6 +371,9 @@ const setStrategy = () => {
      const h4Element = document.querySelector('#strategySelected')
      // Set the new HTML content
      h4Element.innerHTML = strategy;
+     // update legs 1 value
+     const h4Element2 = document.querySelector('#leg1TypeValue')
+     h4Element2.innerHTML = strategy;
 }
 
 const getPrice = () => {
