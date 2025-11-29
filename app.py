@@ -173,6 +173,22 @@ def getPnlTable():
         print('Cleaned values',strike_price1,premium1,cur_stock_price)
         print('exp_date1:',exp_date1,'calls_or_puts1:',calls_or_puts1,
               'premium1:',premium1, 'strategy:',strategy)
+        # multi leg
+        if strategy == Strategy.CREDIT_SPREAD:
+            exp_date2 = data['exp_date2']
+            calls_or_puts2 = data['calls_or_puts2']
+            # need to clean up some items
+            strike_price2 = extract_nbr(data['strike_price2'])
+            premium2 = extract_nbr(data['premium2'])
+            buy_or_sell2 = data['buy_or_sell2']
+            if 'buy' in buy_or_sell2.lower():
+                buy_or_sell2 = BUY_OR_SELL.BUY
+            else:
+                buy_or_sell2 = BUY_OR_SELL.SELL
+            print('Cleaned values',strike_price2,premium2)
+            print('exp_date2:',exp_date2,'calls_or_puts2:',calls_or_puts2,
+                'premium2:',premium2)
+
     except Exception as e:
         print("NO CONTENT",e)
         return jsonify({
@@ -190,8 +206,20 @@ def getPnlTable():
     oLeg.buy_or_sell = buy_or_sell
     oLeg.options_quote = q 
     oTrade = OptionsTrade()
-    oTrade.legs = [oLeg] # assume 1 leg for now
+    oTrade.legs = [oLeg]
     oTrade.strategy = strategy
+    # check for 2nd leg
+    if strategy == Strategy.CREDIT_SPREAD:
+        q2 = OptionsQuote()
+        q2.expiration_date = exp_date2
+        q2.call_or_put = calls_or_puts2
+        q2.strike_price = strike_price2
+        q2.premium = premium2
+        q2.underlying_price = cur_stock_price
+        oLeg2 = OptionsLeg
+        oLeg2.buy_or_sell = buy_or_sell2
+        oLeg2.options_quote = q2
+        oTrade.legs.append(oLeg2)
     pnl_table = get_pnl(oTrade)
     # print(output_list)
     return jsonify({

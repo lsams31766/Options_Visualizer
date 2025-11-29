@@ -7,32 +7,49 @@ var cur_exp_date = '2025-12-19';
 var callOrPutSelection = 'CALLS'; // for options chain table 
 var pnlChartVisible = false;
 var dialog;
+var optionsLegSelected = 1; // which options button was pressed
+var cur_strategy = 'Call'
 
+import {
+    MakeLegs, leg_settings
+ } from './legs.js';
+
+// key value pairs for strategy desriptions
+const strategy_desc = {
+    'Call': 'BULLISH: Buy Call option. Profit if Stock Price is > Strike Price at Expiration',
+    'Put': 'BEARISH: Buy Put Option. Profit if Stock Price is < Strike Price at Expiration',
+    'Sell Call': 'BEARISH: SELL Call option.  Profit if Stock Price is <= Strike Price at Expiration',
+    'Sell Put': 'BULLISH: SELL Put option.  Profit if Stock Price is >= Strike Price at Expiration',
+    'Credit Spread': 'BEARISH: Sell a PUT lower than current stock price, and Buy a PUT at a lower strike price, profit if stock ends up between Strke Prices',
+    'Iron Condor': 'BEARISH: Sell CALL above market price, Buy call above Sell Call, sell PUT below market price, buy PUT below Sell Put',
+    'Calendar Spread': 'Sell Call Expires soon, Buy Call Expires later at same Strike Price',
+    'Collar': 'BEARISH: Sell a Call higher than current stock price, and Buy a PUT at a lower than market price, profit if stock ends up between Strke Prices'
+}
+
+const singleLeg = ['Call','Put','Sell Call','Sell Put']
+const twoLegs = ['Credit Spread', 'Calendar Spread', 'Collar']
+const fourLegs = ['Iron Condor']
 
 // forward declare showPnlChart()
-let showPnlChart = function() {
+let showPnlChart = function() {}
 
-}
 function setLegDetails(strike, premium) {
     console.log('setLegDetails',strike, premium)
-    // TODO
-    // set selected_expiration, selected_option_type, 
-    // selected_strike, selected_premium
-    var h4Element = document.querySelector('#selected_expiration')
-    h4Element.innerHTML = 'Expiration:&nbsp' + cur_exp_date;
+    // use optionsLegSelected to create id of elemnet to update
+    const i = optionsLegSelected;
+    const expirationElement = document.querySelector('#selected_expiration' + String(i));
+    const optionTypeElement = document.querySelector('#selected_option_type' + String(i));
+    const strikeElement = document.querySelector('#selected_strike' + String(i));
+    const premiumElement = document.querySelector('#selected_premium' + String(i));
+    expirationElement.innerHTML = 'Expiration:&nbsp' + cur_exp_date;
 
-    h4Element = document.querySelector('#selected_option_type')
     var s = 'CALL';
     if (callOrPutSelection == 'PUTS') {
         s = 'PUT'
     }
-    h4Element.innerHTML = s
-
-    h4Element = document.querySelector('#selected_strike')
-    h4Element.innerHTML = 'Strike:&nbsp' + String(strike);
-
-    h4Element = document.querySelector('#selected_premium')
-    h4Element.innerHTML = 'Premium:&nbsp' + premium;
+    optionTypeElement.innerHTML = s
+    strikeElement.innerHTML = 'Strike:&nbsp' + String(strike);
+    premiumElement.innerHTML = 'Premium:&nbsp' + premium;
 
     // enable pnl chart
     $('#showPNL').removeAttr('disabled');
@@ -43,26 +60,51 @@ function setLegDetails(strike, premium) {
     dialog.close();
 }
 
+window.setLegDetails = setLegDetails; // make this global
+
 
 $(document).ready( () => {
     dialog = document.querySelector("dialog");
+    MakeLegs('#legsDiv',1);
+
+    const MakeOptionsEventListeners = () => {
+        const nbr_legs = leg_settings[cur_strategy]['nbr_legs'];
+        // Loop through the range of IDs
+        for (let i = 1; i <= nbr_legs; i++) {
+            const elementId = `getOption${i}`; // Construct the ID
+            const element = document.getElementById(elementId);
+        
+            if (element) { // Check if the element actually exists
+                element.addEventListener('click', function() {
+                    optionsLegSelected = i;
+                    dialog.showModal();
+                });
+            }
+        }
+    };
 
     $('#getPrice').click(function(){
         getPrice();
         getOptionsChain();
         updateOptionsChain();
-        $('#getOption').removeAttr('disabled');
+        // determine which getOptions buttons to enable
+        const nbr_legs = leg_settings[cur_strategy]['nbr_legs']
+        for (let i=1; i<=nbr_legs; i++) {
+            let className = '#getOption' + String(i);
+            $(className).removeAttr('disabled');
+        }
     });
 
     $("#strategyList").change(function () {
         // strategy changed
         console.log("strategy changed");
-        setStrategy();
-        // set correct toggle in options chain
-        var strategy = $('#strategyList').find(":selected").text()
+        cur_strategy = $('#strategyList').find(":selected").text(); 
+
         const callsElement = $('.strip-button-0')[0]
         const putsElement = $('.strip-button-1')[0]
-        if (strategy == 'Put' || strategy =='Sell Put') {
+
+        if (cur_strategy == 'Put' || cur_strategy =='Sell Put' ||
+            cur_strategy == 'Credit Spread') {
             // remove active-strip-button from class of strip-button-0
             callsElement.classList.remove("active-strip-button");
             // add active-strip-button to class of strip-button-1
@@ -77,7 +119,32 @@ $(document).ready( () => {
             callOrPutSelection = 'CALLS';
         }
         updateOptionsChain();
-        
+        const ls = leg_settings[cur_strategy];
+        const number_legs = ls['nbr_legs'];
+        MakeLegs('#legsDiv',number_legs);
+        // set the buy/write and put/call boxes
+        //   and enabling of get options button
+        //  using leg_settings config
+        for (let i = 1; i <= number_legs; i++) {
+            // Assuming you have a <select> element with the ID 'mySelect'
+            // const selectElement = document.getElementById('buyWrite1');
+            // Set the value to 'orange', which will select the option with value="orange"
+            // selectElement.selectedIndex = 0;
+            let bwClass = 'buyWrite' + String(i)
+            let bwElem = document.getElementById(bwClass);
+            // get value, convert to index
+            let aIndex = 0;
+            if (ls['buy_write'][i-1] == 'write') {
+                aIndex = 1;
+            }
+            bwElem.selectedIndex = aIndex;
+        }
+        // clear the chart, need to select options and pull in the chart
+        const myDiv2 = document.getElementById('myChartContainer');
+        myDiv2.style.display = 'none';
+
+        setStrategyTextArea();
+        MakeOptionsEventListeners();
      });
 
     
@@ -98,8 +165,6 @@ $(document).ready( () => {
         console.log("Show PNL chart");
         showPnlChart();
      });
-
-     
 
     var table = $('#callsOptionsChain').DataTable({
         info: false,
@@ -215,50 +280,68 @@ $(document).ready( () => {
         // TODO - call GetOptionsTable with Call or Put value
         instance.append('#callOrPutToggle');
     }
-
-    $('#getOption').click(function(){
-        dialog.showModal();
-    });
-
     // "Close" button closes the dialog
     $( "#closeButton").on( "click", () => {
         dialog.close();
     });
 
-    showPnlChart = () => {
-        // TODO 2 and more leg trades
-        console.log("showPnlChart")
-        const myDiv = document.getElementById('myChartContainer');
-        myDiv.style.display = 'block';
-        pnlChartVisible = true;
+    const makePnlCallPayload = () => {
+        // make the payload for call to getPnlTable()
         // MUST SEND:
         //  exp_date1, calls_or_puts1, strike_price1, premium1, 
         //  strategy, cur_stock_price, buy_or_sell
-        const strikePriceElement = document.querySelector('#selected_strike');
-        const strikePrice1 = strikePriceElement.innerText;
+        const expiration1 = $('#selected_expiration1').text();
+        const calls_or_puts1 = $('#selected_option_typ1e').text();
+        const strikePrice1 = $('#selected_strike1').text();
+        const premium1 = $('#selected_premium1').text();
+        const cur_stock_price = $('#priceVal').text();
+        const buy_or_sell1 = $('#buyWrite1').find(":selected").text();
 
-        const PremiumElement = document.querySelector('#selected_premium');
-        const premium1 = PremiumElement.innerText;
+        let payload = {}
+        if (singleLeg.indexOf(cur_strategy) >= 0 || 
+            twoLegs.indexOf(cur_strategy) >= 0) {
+            payload = {
+                exp_date1: expiration1,
+                calls_or_puts1: calls_or_puts1,
+                strike_price1: strikePrice1,
+                premium1: premium1,
+                strategy: cur_strategy,
+                cur_stock_price: cur_stock_price,
+                buy_or_sell: buy_or_sell1
+            }
+        }
+        if (twoLegs.indexOf(cur_strategy) >= 0) {
+            const expiration2 = $('#selected_expiration2').text();
+            const calls_or_puts2 = $('#selected_option_type2').text();
+            const strikePrice2 = $('#selected_strike2').text();
+            const premium2 = $('#selected_premium2').text();
+            const buy_or_sell2 = $('#buyWrite2').find(":selected").text();
+            payload2 = {
+                exp_date2: expiration2,
+                calls_or_puts2: calls_or_puts2,
+                strike_price2: strikePrice2,
+                premium2: premium2,
+                buy_or_sell2: buy_or_sell2
+            }
+            payload = { ...payload, ...payload2 }; 
+        }
+        return payload;
+    }
 
-        const strategyElement = document.querySelector('#strategySelected');
-        const strategy = strategyElement.innerText;
-
-        const curStockPriceElement = document.querySelector('#priceVal');
-        const cur_stock_price = curStockPriceElement.innerText;
-        
+    showPnlChart = () => {
+        // TODO 3 and more leg trades
+        // show pnl chart
+        console.log("showPnlChart");
+        const myDiv = document.getElementById('myChartContainer');
+        myDiv.style.display = 'block';
+        pnlChartVisible = true;
+        // make the payload
+        let payload = makePnlCallPayload();
         const myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
         const myRequest = new Request("getPnlTable", {
             method: "post",
-            body: JSON.stringify({ 
-                exp_date1: cur_exp_date,
-                calls_or_puts1: strategy,
-                strike_price1: strikePrice1,
-                premium1: premium1,
-                strategy: strategy,
-                cur_stock_price: cur_stock_price,
-                buy_or_sell: strategy
-            }),
+            body: JSON.stringify(payload),
             headers: myHeaders,
             });
     
@@ -331,13 +414,33 @@ $(document).ready( () => {
         }
     });
 
+    const setStrategyTextArea = () => {
+        //strategyTextArea
+        $("#strategyTextArea").val(strategy_desc[cur_strategy]);
+    }
+    
+    MakeOptionsEventListeners();
     loadListBoxes();
     makeCallOrPutToggle();
+    setStrategyTextArea();
 })
 
 const loadListBoxes = () => {
     console.log('Load List Boxes');
     loadListBox("strategyList","getStrategies");
+    // contracts1, contracts2 listboxes
+    const values = ['1','2','3','4','5']
+    for (const i of values) {
+        // add list items
+        var option = document.createElement("option");
+        var option2 = document.createElement("option");
+        option.text = i;
+        option.value = i;
+        option2.text = i;
+        option2.value = i;
+        $("#contracts1").append(option)
+        $("#contracts2").append(option2)
+    }
 }
 
 const loadListBox = (aSelect, aUrl) => {
@@ -365,15 +468,14 @@ function AddOption(aSelect, aValue) {
 
 const setStrategy = () => {
     console.log("setStrategy")
-    var strategy = $('#strategyList').find(":selected").text(); 
      // Get a reference to the h4 element by its class
      // const h4Element = $("#strategySelected");
-     const h4Element = document.querySelector('#strategySelected')
+     // const h4Element = document.querySelector('#strategySelected')
      // Set the new HTML content
-     h4Element.innerHTML = strategy;
+     // h4Element.innerHTML = strategy;
      // update legs 1 value
-     const h4Element2 = document.querySelector('#leg1TypeValue')
-     h4Element2.innerHTML = strategy;
+     // const h4Element2 = document.querySelector('#leg1TypeValue')
+     // h4Element2.innerHTML = strategy;
 }
 
 const getPrice = () => {
@@ -395,7 +497,7 @@ const getPrice = () => {
         // Convert response to text
         .then((response) => response.json())
         .then((data) => {
-            newData = data.item;
+            const newData = data.item;
             console.log('price is ', newData)
             $("#priceVal").html(newData);                
         })

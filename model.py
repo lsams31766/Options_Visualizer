@@ -49,7 +49,7 @@ def strategy_str_to_obj(strStrategy):
         strategy = Strategy.SHORT_CALL
     if strStrategy.lower() == 'sell put' or strStrategy.lower() == 'short put':
         strategy = Strategy.SHORT_PUT
-    if strStrategy.lower() == 'credit sptread':
+    if strStrategy.lower() == 'credit spread':
         strategy = Strategy.CREDIT_SPREAD
     if strStrategy.lower() == 'iron condor':
         strategy = Strategy.IRON_CONDOR

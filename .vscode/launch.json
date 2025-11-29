@@ -10,7 +10,8 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "/Users/larrysamuels/python_code/options_visualizer/venv/bin/python"
         }
     ]
 }
