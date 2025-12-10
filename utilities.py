@@ -23,4 +23,4 @@ def days_until_date(target_date):
     today = date.today()
     
     time_difference = datetime_target_date.date() - today
-    return time_difference.days
+    return time_difference.days + 1

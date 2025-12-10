@@ -112,7 +112,7 @@ export const leg_settings = {
     'Sell Call': {'nbr_legs':1, 'call_put':['call'], 'buy_write':['write']},
     'Sell Put': {'nbr_legs':1, 'call_put':['put'], 'buy_write':['write']},
     'Credit Spread': {'nbr_legs':2, 'call_put':['put','put'], 'buy_write':['write','buy']},
-    'Iron Condor': {'nbr_legs':4, 'call_put':['call','call','put','put'], 'buy_write':['write','buy','write','buy']},
+    'Iron Condor': {'nbr_legs':4, 'call_put':['put','put','call','call'], 'buy_write':['write','buy','write','buy']},
     'Calendar Spread': {'nbr_legs':2, 'call_put':['call','call'], 'buy_write':['write','buy']},
     'Collar': {'nbr_legs':2, 'call_put':['call','put'], 'buy_write':['write','buy']}}
 

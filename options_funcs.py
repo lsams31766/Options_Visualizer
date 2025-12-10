@@ -3,6 +3,8 @@ import math
 from scipy.stats import norm
 from utilities import days_until_date
 from model import *
+from options_profit_calculator import make_profit_calcs_matrix, rotate_table
+from yfinance_access import get_sigma, get_current_stock_price
 
 interest_rate = 0.0425
 
@@ -191,6 +193,14 @@ def get_profit_and_loss(optionsTrade):
             profit2 = round(max(oq2.strike_price-p,0)-oq2.premium,2)
             PNL.append(round(profit1 + profit2, 2))
 
+    if strategy == Strategy.CALENDAR_SPREAD:
+        # Sell call with near expiration
+        # Buy Call with further out expiration
+        for p in stock_range:
+            profit1 = round(oq1.premium - max(0,p-oq1.strike_price),2)
+            profit2 = round(max(p-oq2.strike_price,0)-oq2.premium,2)
+            PNL.append(round(profit1 + profit2, 2))
+
     if strategy == Strategy.IRON_CONDOR:
         # sell OTM put, Buy further OTM put,
         # Sell OTM call, Buy further OTM call
@@ -198,8 +208,6 @@ def get_profit_and_loss(optionsTrade):
             raise Exception("Iron Condor, invalid put strike prices")
         if oq3.strike_price >= oq4.strike_price:
             raise Exception("Iron Condor, invalid call strike prices")
-        if oq3.strike_price <= oq4.strike_price:
-            raise Exception("Iron Condoer, invalid Call vs Put")
         for p in stock_range:
             profit1 = round(oq1.premium - max(0, oq1.strike_price - p),2)
             profit2 = round(max(0, oq2.strike_price -p) - oq2.premium,2)
@@ -207,4 +215,156 @@ def get_profit_and_loss(optionsTrade):
             profit4 = round(max(0,p-oq4.strike_price) - oq4.premium,2)
             PNL.append(round(profit1 + profit2 + profit3 + profit4, 2))
 
+    if strategy == Strategy.COLLAR:
+        # Sell call higher than current price
+        # Buy Put lower then current price
+        if oq1.strike_price <= oq2.strike_price:
+            raise Exception("Collar, invalid put strike prices")
+        for p in stock_range:
+            profit1 = round(oq1.premium - max(0,p-oq1.strike_price),2)
+            profit2 = round(max(oq1.strike_price-p,0)-oq1.premium,2)
+            PNL.append(round(profit1 + profit2, 2))
+
     return stock_range, PNL
+
+leg_settings = {
+    'Call': {'nbr_legs':1, 'call_put':['call'], 'buy_write':['buy']},    
+    'Put': {'nbr_legs':1, 'call_put':['put'], 'buy_write':['buy']},
+    'Sell Call': {'nbr_legs':1, 'call_put':['call'], 'buy_write':['write']},
+    'Sell Put': {'nbr_legs':1, 'call_put':['put'], 'buy_write':['write']},
+    'Credit Spread': {'nbr_legs':2, 'call_put':['put','put'], 'buy_write':['write','buy']},
+    'Iron Condor': {'nbr_legs':4, 'call_put':['call','call','put','put'], 'buy_write':['write','buy','write','buy']},
+    'Calendar Spread': {'nbr_legs':2, 'call_put':['call','call'], 'buy_write':['write','buy']},
+    'Collar': {'nbr_legs':2, 'call_put':['call','put'], 'buy_write':['write','buy']}}
+
+def buy_sell_to_enum(buy_sell_str):
+    if 'buy' in buy_sell_str.lower():
+        buy_or_sell = BUY_OR_SELL.BUY
+    else:
+        buy_or_sell = BUY_OR_SELL.SELL
+    return buy_or_sell
+
+def calls_puts_to_enum(calls_puts_str):
+    if 'call' in calls_puts_str.lower():
+        calls_or_puts = CALL_OR_PUT.CALL
+    else:
+        calls_or_puts = CALL_OR_PUT.PUT
+    return calls_or_puts
+
+############################################################
+#def show_profit_calcs(strike_list_item1, strike_list_item2, ticker, ticker_name, expiration_date, strategy, in_dollars):
+def get_profit_calcs(optionsTrade, in_dollars):
+    # strike_list_item has (strike_price, premium, iv)
+    #TODO - put this in a pandas dataframe
+    #columns are stock prices 200,202,204...240
+    #indexes are DTE 30, 29, 28, ... 1
+    #for a given DTE - vary the stock price to get options value
+    # repeat for next DTE until DTE = 1
+    # MAY need to optimize if DTE is large > 60 (do every 5,10,30 days)
+    # CURRENTLY implemented for 1 DTE
+    ot = optionsTrade # smaller variable name
+    leg1 = ot.legs[0]
+    oq1 = leg1.options_quote
+    cur_stock_price = oq1.underlying_price
+    strike_price1 = oq1.strike_price
+    premium1 = oq1.premium
+    # fix expiration date
+    if 'Expiration' in oq1.expiration_date:
+        oq1.expiration_date = oq1.expiration_date[12:]
+    DTE = days_until_date(oq1.expiration_date)
+
+    if oq1.call_or_put == CALL_OR_PUT.CALL:
+        call = True 
+    else:
+        call = False
+    # get sigma - a bit inefficient so need some refactoring!!!
+    _, stock_ticker = get_current_stock_price(oq1.ticker_symbol)
+    sigma1 = get_sigma(stock_ticker, oq1.expiration_date, oq1.strike_price, call)
+    
+    strike_price2 = None
+    sigma2 = None
+    premium2 = None
+    if len(ot.legs) > 1:
+        leg2 = ot.legs[1]
+        oq2 = leg2.options_quote
+        strike_price2 = oq2.strike_price
+        premium2 = oq2.premium
+        if oq2.call_or_put == CALL_OR_PUT.CALL:
+            call = True 
+        else:
+            call = False
+        # get sigma - a bit inefficient so need some refactoring!!!
+        sigma2 = get_sigma(stock_ticker, oq2.expiration_date, oq2.strike_price, call)
+
+    q = oq1.dividends
+    if q == None:
+        q = 0.0
+    strategy = ot.strategy
+    ticker_name = oq1.ticker_symbol
+    expiration_date = oq1.expiration_date
+    data = make_future_profits_table(strategy, ticker_name, 
+            cur_stock_price, strike_price1, expiration_date, sigma1, q, premium1, 
+            strike_price2, sigma2, premium2, 
+            in_dollars)
+    return data
+   
+def format_values(values, min_decimial_places = 0):
+    # make it easier to display by shrinking sizes
+    new_values = []
+    for v in values:
+        if v < 10:
+            new_values.append(round(v,max(1,min_decimial_places)))
+        else:
+            if min_decimial_places == 0:
+                new_values.append(round(v))
+            else:
+                new_values.append(round(v, min_decimial_places))
+    return new_values
+
+def make_future_profits_table(strategy, ticker_name, cur_stock_price, 
+            strike_price1, expiration_date, sigma1, q, premium1, 
+            strike_price2, sigma2, premium2, 
+            in_dollars):
+
+    output_table = {}
+    DTE = days_until_date(expiration_date)
+    # place holder for space for DTE
+    #place_holder = 'DTE '
+    #file.write(place_holder)
+
+    # want rows to be decreasing DTE
+    # want colums to be decreasing stock price
+
+    t = make_profit_calcs_matrix(strategy, cur_stock_price, 
+    strike_price1, DTE, interest_rate, sigma1, q, premium1, 
+    strike_price2, sigma2, premium2, 
+    in_dollars)
+
+    # rotate table - expiration on columns, prices in rows
+    t2 = rotate_table(t)
+        # make the first row with is DTE
+    output_table["days"] = [] 
+    d = DTE
+
+    while d > 0:
+        formatted_string = f"{d:<8}"
+        output_table["days"].append(formatted_string)
+        d -= 1
+    
+    # now data section
+    # format "data":[
+    #  {'price': 478.0, 'data': [1.51, 1.53, 1.55, 1.57, 1.6, 1.62, 1.65, 1.68, 1.71, 1.75, 1.79, 1.83, 1.88, 1.93, 1.99, 2.06, 2.14, 2.23, 2.34, 2.48, 2.65, 2.87, 3.1]},
+    output_table["data"] = [] 
+    for row in t2:
+        output_row = {}
+        row = format_values(row,2) # decimal places minimum
+        row[0] = round(row[0]) # stock price nearest integer
+        output_row['price'] = row[0]
+        output_row['data'] = []
+        for p in row:
+            formatted_string = f"{p:<8}" # Left-align, allocate 8 characters for each number
+            output_row['data'].append(formatted_string)
+        output_table["data"].append(output_row)
+    return output_table
+
+

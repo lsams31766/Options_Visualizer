@@ -9,6 +9,7 @@ import operator
 from api import get_strategies, get_ticker_quote, \
   list_expiration_dates, list_options_chain, get_pnl
 from model import *
+from options_funcs import leg_settings, buy_sell_to_enum, calls_puts_to_enum, get_profit_calcs
 
 #from models import *
 #from presentation import *
@@ -84,7 +85,9 @@ def getPrice():
 def getExpirationDates():
     print("### getExpirationDates ###")
     content = request.json
-    tickerSymbol = content['ticker_symbol'] # not needed unless js stores the object
+    tickerSymbol = content['ticker_symbol']
+    _, stockTicker = get_ticker_quote(tickerSymbol)
+    cur_stock_ticker = stockTicker
     expDates = list_expiration_dates(cur_stock_ticker)
     return jsonify({
             "items": expDates
@@ -148,83 +151,78 @@ def getPnlTable():
     #   exp_date1, calls_or_puts1, strike_price1, premium1, strategy
     #   cur_stock_price, buy_or_sell
     try:
-        raw_data = request.data.decode('utf-8') 
-        print("raw_data",raw_data)
-        data = request.get_json(force=True)
+        data = request.json
         print("data",data)
-        # todo allow multiple legs
-        exp_date1 = data['exp_date1']
-        calls_or_puts1 = data['calls_or_puts1']
-        if 'call' in calls_or_puts1.lower():
-            calls_or_puts1 = CALL_OR_PUT.CALL
-        else:
-            calls_or_puts1 = CALL_OR_PUT.PUT
-        # need to clean up some items
-        strike_price1 = extract_nbr(data['strike_price1'])
-        premium1 = extract_nbr(data['premium1'])
-        strategy = data['strategy']
-        strategy = strategy_str_to_obj(strategy)
+        # for any nbr legs we get: strategy, cur_stock_price
+        strategy_str = data['strategy']
+        strategy = strategy_str_to_obj(strategy_str)
         cur_stock_price = extract_nbr(data['cur_stock_price'])
-        buy_or_sell = data['buy_or_sell']
-        if 'buy' in buy_or_sell.lower():
-            buy_or_sell = BUY_OR_SELL.BUY
-        else:
-            buy_or_sell = BUY_OR_SELL.SELL
-        print('Cleaned values',strike_price1,premium1,cur_stock_price)
-        print('exp_date1:',exp_date1,'calls_or_puts1:',calls_or_puts1,
-              'premium1:',premium1, 'strategy:',strategy)
-        # multi leg
-        if strategy == Strategy.CREDIT_SPREAD:
-            exp_date2 = data['exp_date2']
-            calls_or_puts2 = data['calls_or_puts2']
-            # need to clean up some items
-            strike_price2 = extract_nbr(data['strike_price2'])
-            premium2 = extract_nbr(data['premium2'])
-            buy_or_sell2 = data['buy_or_sell2']
-            if 'buy' in buy_or_sell2.lower():
-                buy_or_sell2 = BUY_OR_SELL.BUY
-            else:
-                buy_or_sell2 = BUY_OR_SELL.SELL
-            print('Cleaned values',strike_price2,premium2)
-            print('exp_date2:',exp_date2,'calls_or_puts2:',calls_or_puts2,
-                'premium2:',premium2)
-
+        # for each leg get: exp_date, calls_or_puts, strike_price, premium, buy_or_sell
+        nbr_legs = leg_settings[strategy_str]['nbr_legs']
+        oTrade = OptionsTrade()
+        oTrade.legs = []
+        oTrade.strategy = strategy
+        for i in range(1,nbr_legs + 1):
+            oLeg = OptionsLeg()
+            oLeg.buy_or_sell = buy_sell_to_enum(data['buy_or_sell' + str(i)])
+            q = OptionsQuote()
+            q.expiration_date = data['exp_date' + str(i)]
+            q.call_or_put = calls_puts_to_enum(data['calls_or_puts' + str(i)])
+            q.strike_price = extract_nbr(data['strike_price' + str(i)])
+            q.premium = extract_nbr(data['premium' + str(i)])
+            q.underlying_price = cur_stock_price
+            oLeg.options_quote = q 
+            oTrade.legs.append(oLeg)
     except Exception as e:
         print("NO CONTENT",e)
         return jsonify({
              "data": []
          })
-    # make an optionsTrade object, get the pnl, return to caller
-    q = OptionsQuote()
-    # TODO allow for multiple legs
-    q.expiration_date = exp_date1
-    q.call_or_put = calls_or_puts1
-    q.strike_price = strike_price1
-    q.premium = premium1
-    q.underlying_price = cur_stock_price
-    oLeg = OptionsLeg()
-    oLeg.buy_or_sell = buy_or_sell
-    oLeg.options_quote = q 
-    oTrade = OptionsTrade()
-    oTrade.legs = [oLeg]
-    oTrade.strategy = strategy
-    # check for 2nd leg
-    if strategy == Strategy.CREDIT_SPREAD:
-        q2 = OptionsQuote()
-        q2.expiration_date = exp_date2
-        q2.call_or_put = calls_or_puts2
-        q2.strike_price = strike_price2
-        q2.premium = premium2
-        q2.underlying_price = cur_stock_price
-        oLeg2 = OptionsLeg
-        oLeg2.buy_or_sell = buy_or_sell2
-        oLeg2.options_quote = q2
-        oTrade.legs.append(oLeg2)
     pnl_table = get_pnl(oTrade)
-    # print(output_list)
     return jsonify({
             "data": pnl_table
     })
+
+# get_future_profit
+@app.route('/get_future_profit', methods=['POST'])
+def getFutureProfit():
+    print("### getFutureProfit ###")
+    # for any nbr legs we get: strategy, cur_stock_price
+    try:
+        data = request.json
+        strategy_str = data['strategy']
+        strategy = strategy_str_to_obj(strategy_str)
+        cur_stock_price = extract_nbr(data['cur_stock_price'])
+        ticker_name = data['ticker_name']
+        # for each leg get: exp_date, calls_or_puts, strike_price, premium, buy_or_sell
+        nbr_legs = leg_settings[strategy_str]['nbr_legs']
+        oTrade = OptionsTrade()
+        oTrade.legs = []
+        oTrade.strategy = strategy
+        for i in range(1,nbr_legs + 1):
+            oLeg = OptionsLeg()
+            oLeg.buy_or_sell = buy_sell_to_enum(data['buy_or_sell' + str(i)])
+            q = OptionsQuote()
+            q.expiration_date = data['exp_date' + str(i)]
+            q.call_or_put = calls_puts_to_enum(data['calls_or_puts' + str(i)])
+            q.strike_price = extract_nbr(data['strike_price' + str(i)])
+            q.premium = extract_nbr(data['premium' + str(i)])
+            q.underlying_price = cur_stock_price
+            q.ticker_symbol = ticker_name
+            oLeg.options_quote = q 
+            oTrade.legs.append(oLeg)
+    except Exception as e:
+        print("NO CONTENT",e)
+        return jsonify({
+                "data": []
+            })
+    data = get_profit_calcs(oTrade, True)
+    return jsonify({
+            "data": data
+    })
+
+
+
 
 
 if __name__ == "__main__":

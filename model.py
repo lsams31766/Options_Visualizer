@@ -53,7 +53,7 @@ def strategy_str_to_obj(strStrategy):
         strategy = Strategy.CREDIT_SPREAD
     if strStrategy.lower() == 'iron condor':
         strategy = Strategy.IRON_CONDOR
-    if strStrategy.lower() == 'calendar sptread':
+    if strStrategy.lower() == 'calendar spread':
         strategy = Strategy.CALENDAR_SPREAD
     if strStrategy.lower() == 'collar':
         strategy = Strategy.COLLAR
@@ -79,7 +79,7 @@ class OptionsQuote:
     underlying_price = 0 # Current stock or underlying asset price
     premium = 0 # premium paid/received for the option at initiation
     sigma = 0 # the Implied Volatility of the option at initiation
-    divedends = 0 # dividends paid on option
+    dividends = 0 # dividends paid on option
     delta = 0 # calculated deleta
     call_or_put = CALL_OR_PUT.CALL # For a put CALL_OR_PUT.PUT
 

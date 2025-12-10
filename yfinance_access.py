@@ -40,6 +40,16 @@ def get_strike_prices_and_premiums(stock_ticker,selected_date,call=True):
     result_list = df[['strike', 'lastPrice','impliedVolatility']].apply(tuple, axis=1).to_list()
     return result_list
 
+def get_sigma(stock_ticker, selected_date, strike_price, call=True):
+    options_chain = stock_ticker.option_chain(selected_date)
+    if call == True:
+       df = options_chain.calls
+    else:
+        df = options_chain.puts
+    # print(df)
+    sigma = df[df['strike'] == strike_price]['impliedVolatility'].iloc[0]
+    return sigma
+
 def get_current_stock_price(ticker_symbol):
     #ticker = yf.Ticker("AAPL")
     # Get the most recent price information

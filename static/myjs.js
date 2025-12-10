@@ -14,14 +14,18 @@ import {
     MakeLegs, leg_settings
  } from './legs.js';
 
+ import {
+    makeProfitChart
+ } from './future_profit.js'
+
 // key value pairs for strategy desriptions
 const strategy_desc = {
     'Call': 'BULLISH: Buy Call option. Profit if Stock Price is > Strike Price at Expiration',
     'Put': 'BEARISH: Buy Put Option. Profit if Stock Price is < Strike Price at Expiration',
     'Sell Call': 'BEARISH: SELL Call option.  Profit if Stock Price is <= Strike Price at Expiration',
     'Sell Put': 'BULLISH: SELL Put option.  Profit if Stock Price is >= Strike Price at Expiration',
-    'Credit Spread': 'BEARISH: Sell a PUT lower than current stock price, and Buy a PUT at a lower strike price, profit if stock ends up between Strke Prices',
-    'Iron Condor': 'BEARISH: Sell CALL above market price, Buy call above Sell Call, sell PUT below market price, buy PUT below Sell Put',
+    'Credit Spread': 'BULLISH: Sell a PUT lower than current stock price, and Buy a PUT at a lower strike price, profit if stock ends up between Strke Prices',
+    'Iron Condor': 'BEARISH: Sell PUT below market price, buy PUT below Sell Put, Sell CALL above market price, Buy call above Sell Call, ',
     'Calendar Spread': 'Sell Call Expires soon, Buy Call Expires later at same Strike Price',
     'Collar': 'BEARISH: Sell a Call higher than current stock price, and Buy a PUT at a lower than market price, profit if stock ends up between Strke Prices'
 }
@@ -32,6 +36,9 @@ const fourLegs = ['Iron Condor']
 
 // forward declare showPnlChart()
 let showPnlChart = function() {}
+
+// forward declare showFutureProfitChart()
+let showFutureProfitChart = function() {}
 
 function setLegDetails(strike, premium) {
     console.log('setLegDetails',strike, premium)
@@ -53,7 +60,8 @@ function setLegDetails(strike, premium) {
 
     // enable pnl chart
     $('#showPNL').removeAttr('disabled');
-    // not sure if this will work
+    $('#showProfit').removeAttr('disabled');
+    
     if (pnlChartVisible == true) {
         showPnlChart();
     }
@@ -61,6 +69,10 @@ function setLegDetails(strike, premium) {
 }
 
 window.setLegDetails = setLegDetails; // make this global
+
+
+// TODO !!! - options chain - wrong options sent as per toggle given strategy change
+//   fix which chain (put or call ) is specified for when sent to backend 
 
 
 $(document).ready( () => {
@@ -77,6 +89,10 @@ $(document).ready( () => {
             if (element) { // Check if the element actually exists
                 element.addEventListener('click', function() {
                     optionsLegSelected = i;
+                    // set callOrPutToggle to correct value
+                    const call_or_put = leg_settings[cur_strategy]['call_put'][optionsLegSelected - 1]
+                    SetCallPutToggle(call_or_put);
+                    updateOptionsChain();
                     dialog.showModal();
                 });
             }
@@ -95,16 +111,12 @@ $(document).ready( () => {
         }
     });
 
-    $("#strategyList").change(function () {
-        // strategy changed
-        console.log("strategy changed");
-        cur_strategy = $('#strategyList').find(":selected").text(); 
+    const SetCallPutToggle = (newValue) => {
 
         const callsElement = $('.strip-button-0')[0]
         const putsElement = $('.strip-button-1')[0]
 
-        if (cur_strategy == 'Put' || cur_strategy =='Sell Put' ||
-            cur_strategy == 'Credit Spread') {
+        if (newValue == 'put') {
             // remove active-strip-button from class of strip-button-0
             callsElement.classList.remove("active-strip-button");
             // add active-strip-button to class of strip-button-1
@@ -118,6 +130,13 @@ $(document).ready( () => {
             callsElement.classList.add("active-strip-button");
             callOrPutSelection = 'CALLS';
         }
+
+    };
+
+    $("#strategyList").change(function () {
+        // strategy changed
+        console.log("strategy changed");
+        cur_strategy = $('#strategyList').find(":selected").text(); 
         updateOptionsChain();
         const ls = leg_settings[cur_strategy];
         const number_legs = ls['nbr_legs'];
@@ -166,6 +185,13 @@ $(document).ready( () => {
         showPnlChart();
      });
 
+     $("#showProfit").click(function () {
+        // show Future Profit Chart
+        console.log("Show Future Profit chart");
+        showFutureProfitChart();
+     });
+     
+
     var table = $('#callsOptionsChain').DataTable({
         info: false,
         ordering: false,
@@ -191,9 +217,23 @@ $(document).ready( () => {
                     calls_or_puts: callOrPutSelection
                 }));
             },
-            "dataSrc": "data" // Specify the property in the JSON response containing the data array
+            "dataSrc": "data", // Specify the property in the JSON response containing the data array
         },
-
+        "rowCallback": function(nRow, aData, index) {
+            //  console.log('rowCallback',nRow,aData);
+            // For Calls options chain, make light green ITM
+            const cur_stock_price = Number($('#priceVal').text());
+            if (callOrPutSelection == 'CALLS') {
+                if (aData['STRIKE'] < cur_stock_price) {
+                    $('td', nRow).css('background-color', 'rgb(189,255,189)'); 
+                }   
+            // For Puts options chain, make light green ITM
+            } else {
+                if (aData['STRIKE'] > cur_stock_price) {
+                    $('td', nRow).css('background-color', 'rgb(189,255,189)');                
+                }
+            }
+        },
         columns: [
             { "data": "STRIKE" },
 //            { "data": "PREMIUM" },
@@ -290,40 +330,28 @@ $(document).ready( () => {
         // MUST SEND:
         //  exp_date1, calls_or_puts1, strike_price1, premium1, 
         //  strategy, cur_stock_price, buy_or_sell
-        const expiration1 = $('#selected_expiration1').text();
-        const calls_or_puts1 = $('#selected_option_typ1e').text();
-        const strikePrice1 = $('#selected_strike1').text();
-        const premium1 = $('#selected_premium1').text();
         const cur_stock_price = $('#priceVal').text();
-        const buy_or_sell1 = $('#buyWrite1').find(":selected").text();
-
+        const tickerElement = document.querySelector("#tickerSymbol");
+        const tickerValue = tickerElement.value;
         let payload = {}
-        if (singleLeg.indexOf(cur_strategy) >= 0 || 
-            twoLegs.indexOf(cur_strategy) >= 0) {
-            payload = {
-                exp_date1: expiration1,
-                calls_or_puts1: calls_or_puts1,
-                strike_price1: strikePrice1,
-                premium1: premium1,
-                strategy: cur_strategy,
-                cur_stock_price: cur_stock_price,
-                buy_or_sell: buy_or_sell1
-            }
+        payload = {
+            strategy: cur_strategy,
+            cur_stock_price: cur_stock_price,
+            ticker_name: tickerValue
         }
-        if (twoLegs.indexOf(cur_strategy) >= 0) {
-            const expiration2 = $('#selected_expiration2').text();
-            const calls_or_puts2 = $('#selected_option_type2').text();
-            const strikePrice2 = $('#selected_strike2').text();
-            const premium2 = $('#selected_premium2').text();
-            const buy_or_sell2 = $('#buyWrite2').find(":selected").text();
-            payload2 = {
-                exp_date2: expiration2,
-                calls_or_puts2: calls_or_puts2,
-                strike_price2: strikePrice2,
-                premium2: premium2,
-                buy_or_sell2: buy_or_sell2
-            }
-            payload = { ...payload, ...payload2 }; 
+        // for each leg, add options details
+        const nbr_legs = leg_settings[cur_strategy]['nbr_legs']
+        for (let i = 1; i<= nbr_legs; i++) {
+            let expiration = $('#selected_expiration' + String(i)).text();
+            let calls_or_puts = $('#selected_option_type' + String(i)).text();
+            let strikePrice = $('#selected_strike' + String(i)).text();
+            let premium = $('#selected_premium' + String(i)).text();
+            let buy_or_sell = $('#buyWrite' + String(i)).find(":selected").text();
+            payload['exp_date' + String(i)] = expiration;
+            payload['calls_or_puts' + String(i)] =  calls_or_puts;
+            payload['strike_price' + String(i)] = strikePrice;
+            payload['premium' + String(i)] = premium;
+            payload['buy_or_sell' + String(i)] = buy_or_sell;
         }
         return payload;
     }
@@ -413,6 +441,49 @@ $(document).ready( () => {
             }
         }
     });
+    
+    const calcMaxProfit = (payload) => {
+        // calcluate max profit
+        // this is the highest premium of all the legs
+        const nbr_legs = leg_settings[cur_strategy]['nbr_legs'];
+        let max_profit = 0;
+        for (let i = 1; i<= nbr_legs; i++) {
+            let cur_premium = payload['premium' + String(i)]
+            let p = cur_premium.match(/\d+(\.\d+)?/g); // Matches integers and decimals
+            p = Number(p)
+            if (p > max_profit) {
+                max_profit = p;
+            }
+        }
+        return max_profit;
+    }
+    
+    showFutureProfitChart = () => {
+        console.log("showFutureProfitChart");
+        // make the payload
+        const tickerElement = document.querySelector("#tickerSymbol");
+        const tickerValue = tickerElement.value;
+        
+        let payload = makePnlCallPayload();
+        const expiration_date = payload['exp_date1']
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        const myRequest = new Request("get_future_profit", {
+            method: "post",
+            body: JSON.stringify(payload),
+            headers: myHeaders,
+            });
+    
+        fetch(myRequest)
+            // Convert response to text
+            .then((response) => response.json())
+            .then((data) => {
+                const max_profit = calcMaxProfit(payload)
+                makeProfitChart(data['data'], tickerValue, max_profit, expiration_date);
+            })
+            .catch(console.error);
+    }
+
 
     const setStrategyTextArea = () => {
         //strategyTextArea
