@@ -166,16 +166,24 @@ const drawData = (data, maxProfit) => {
     }
 }
 
-// TODO:
-// - adjust canvas width to maxium number of days * offset + margin
-// - close button
-// convert days to month and day of month
-// ability to show/hide the div
+const setCanvasSize = (data) => {
+    // this distorts canvas, so don't do it
+    const p = data['data'];
+    const nbrCols = p[0]['data'].length;
+    const newWidth = days_start[0] + x_offset * nbrCols + 20;
+    const divEl=document.getElementById("myCanvasDiv");
+    let s = "";
+    s = String(newWidth) + "px";
+    divEl.style.maxWidth = s;
+}
+
 
 // external function to call to make the chart
 export const makeProfitChart = (data, ticker_name, max_profit, expiration_date) => {
     // clear canvas
     ctx.clearRect(0, 0, el.width, el.height);
+    // set new size
+    setCanvasSize(data);
     x = days_start[0];
     y = days_start[1];
     let day_array = make_days_array(data);

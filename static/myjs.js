@@ -40,6 +40,9 @@ let showPnlChart = function() {}
 // forward declare showFutureProfitChart()
 let showFutureProfitChart = function() {}
 
+// forward declare updateStockChart()
+let updateStockChart = function() {}
+
 function setLegDetails(strike, premium) {
     console.log('setLegDetails',strike, premium)
     // use optionsLegSelected to create id of elemnet to update
@@ -101,6 +104,7 @@ $(document).ready( () => {
 
     $('#getPrice').click(function(){
         getPrice();
+        updateStockChart();
         getOptionsChain();
         updateOptionsChain();
         // determine which getOptions buttons to enable
@@ -110,6 +114,81 @@ $(document).ready( () => {
             $(className).removeAttr('disabled');
         }
     });
+
+    // THE STOCK PRICE CHART
+    const ctx2 = document.getElementById('myStockChart').getContext('2d');
+    const myStockChart = new Chart(ctx2, {
+        type: 'line', // or 'line', 'pie', 'doughnut', etc.
+        data: {
+            labels: ['2025-01-01','2025-02-01','2025-03-01','2025-04-01', '2025-05-01'],
+            datasets: [{
+                label: 'XXX Price',
+                data: [101,105,106,102,98],
+                backgroundColor: 'rgb(0, 0, 255)',
+                borderColor: 'rgb(0, 0, 255)', // blue
+                borderWidth: 1,
+                pointRadius: 0 // Set radius to 0 to hide points
+
+            }
+        ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false // Allows chart to resize freely
+        }
+    });
+
+    // TODO: controls for picking interval period, set the payload to this!!
+    updateStockChart = () => {
+        console.log("updateStockChart");
+        const myDiv = document.getElementById('myStockChartContainer');
+        myDiv.style.display = 'block';
+        const tickerElement = document.querySelector("#tickerSymbol");
+        const tickerValue = tickerElement.value;
+        const interval = $('#intervalList').find(":selected").text();
+        const period = $('#periodList').find(":selected").text();
+
+        // pnlChartVisible = true;
+        // make the payload
+        const payload = {
+            "ticker_name": tickerValue,
+            "interval" : interval,
+            "period" : period
+        }
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        const myRequest = new Request("get_stock_chart_data", {
+            method: "post",
+            body: JSON.stringify(payload),
+            headers: myHeaders,
+            });
+    
+        fetch(myRequest)
+            // Convert response to text
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data);
+                // extract data into 2 vields  
+                let dates = []
+                let values = []              
+                for (const [key, value] of Object.entries(data)) {
+                    console.log(`${key}: ${value}`);
+                    dates.push(key);
+                    values.push(value);
+                }
+                // clear old chart
+                myStockChart.data.datasets.forEach((dataset) => {
+                    dataset.data = [];
+                });
+                myStockChart.data.labels = dates;
+                myStockChart.data.datasets[0].data = values;
+                myStockChart.data.datasets[0].label = tickerValue;
+                myStockChart.update();
+            })
+            .catch(console.error);
+    }
+
+
 
     const SetCallPutToggle = (newValue) => {
 
@@ -132,6 +211,14 @@ $(document).ready( () => {
         }
 
     };
+
+    $("#intervalList").change(function () {
+        updateStockChart();
+    });
+
+    $("#periodList").change(function () {
+        updateStockChart();
+    });
 
     $("#strategyList").change(function () {
         // strategy changed
@@ -158,10 +245,12 @@ $(document).ready( () => {
             }
             bwElem.selectedIndex = aIndex;
         }
-        // clear the chart, need to select options and pull in the chart
+        // clear the charts, need to select options and pull in the chart
         const myDiv2 = document.getElementById('myChartContainer');
         myDiv2.style.display = 'none';
-
+        const myDiv3 = document.getElementById('myCanvasDiv');
+        myDiv3.style.display = 'none';
+ 
         setStrategyTextArea();
         MakeOptionsEventListeners();
      });
@@ -395,7 +484,7 @@ $(document).ready( () => {
     var prices = [100,105,110,115,120,125,130,135,140,145];
     var values = [-2.5,-2.5,-2,-1,0,1,1.5,2.5,2.5,2.5];
 
-    // THE CHART
+    // THE PNL CHART
     const ctx = document.getElementById('myChart').getContext('2d');
     const myChart = new Chart(ctx, {
         type: 'line', // or 'line', 'pie', 'doughnut', etc.
@@ -441,7 +530,8 @@ $(document).ready( () => {
             }
         }
     });
-    
+
+
     const calcMaxProfit = (payload) => {
         // calcluate max profit
         // this is the highest premium of all the legs
@@ -460,6 +550,9 @@ $(document).ready( () => {
     
     showFutureProfitChart = () => {
         console.log("showFutureProfitChart");
+        const myDiv = document.getElementById('myCanvasDiv');
+        myDiv.style.display = 'block';
+
         // make the payload
         const tickerElement = document.querySelector("#tickerSymbol");
         const tickerValue = tickerElement.value;
@@ -499,6 +592,8 @@ $(document).ready( () => {
 const loadListBoxes = () => {
     console.log('Load List Boxes');
     loadListBox("strategyList","getStrategies");
+    loadListBox("intervalList","getIntervals");
+    loadListBox("periodList","getPeriods");
     // contracts1, contracts2 listboxes
     const values = ['1','2','3','4','5']
     for (const i of values) {
@@ -555,6 +650,13 @@ const getPrice = () => {
     const tickerValue = tickerElement.value;
     console.log("ticker symbol is",tickerValue)
     cur_stock_ticker = tickerValue // for options chain
+
+    // set default values
+    const elInterval = document.getElementById('intervalList');
+    elInterval.value = '1d';
+    const elPeriod = document.getElementById('periodList');
+    elPeriod.value = '3mo';
+    
 
     const myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");

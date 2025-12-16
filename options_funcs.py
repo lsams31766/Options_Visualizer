@@ -294,6 +294,8 @@ def get_profit_calcs(optionsTrade, in_dollars):
         else:
             call = False
         # get sigma - a bit inefficient so need some refactoring!!!
+        if 'Expiration' in oq2.expiration_date:
+            oq2.expiration_date = oq2.expiration_date[12:]
         sigma2 = get_sigma(stock_ticker, oq2.expiration_date, oq2.strike_price, call)
 
     q = oq1.dividends

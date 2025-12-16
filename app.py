@@ -10,6 +10,7 @@ from api import get_strategies, get_ticker_quote, \
   list_expiration_dates, list_options_chain, get_pnl
 from model import *
 from options_funcs import leg_settings, buy_sell_to_enum, calls_puts_to_enum, get_profit_calcs
+from yfinance_access import get_yf_interval_values, get_yf_period_values, get_stock_dates_and_prices
 
 #from models import *
 #from presentation import *
@@ -221,7 +222,41 @@ def getFutureProfit():
             "data": data
     })
 
+# get parameters for the stock chart
+@app.route('/getIntervals', methods=['GET'])
+def get_intervals():
+    print("### getIntervals ###")
+    intervals = get_yf_interval_values()
+    return jsonify({
+        "items": intervals,
+    })
 
+# get parameters for the stock chart
+@app.route('/getPeriods', methods=['GET'])
+def get_periods():
+    print("### getPeriods ###")
+    periods = get_yf_period_values()
+    return jsonify({
+        "items":periods
+    })
+
+# get stock chart data
+@app.route('/get_stock_chart_data', methods=['POST'])
+def getStockChartData():
+    print("### getStockChartData ###")
+    # need ticker name, interval and period
+    try:
+        data = request.json
+        ticker_name = data['ticker_name']
+        interval = data['interval']
+        period = data['period']
+        d = get_stock_dates_and_prices(ticker_name, period, interval)
+        return jsonify(d)
+    except Exception as e:
+        print("ERROR ",e)
+        return jsonify({
+                "d": []
+            })
 
 
 

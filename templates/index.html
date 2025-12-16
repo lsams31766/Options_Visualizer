@@ -80,9 +80,37 @@
                 <textarea class="form-control" id="strategyTextArea" rows="2"></textarea>
               </div>
         </div> <!--row-->
+        <!-- STOCK PRICE CHART -->
+        <div class="container mt-4">
+            <div class="card" id="myStockChartContainer" style="display: none;" >
+                <div class="row py-2">
+                    <div class="col-2">
+                        <h4>Interval:</h4>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-control"  id='intervalList' name='intervalList' >
+                        </select>
+                    </div>
+                    <div class="col-2">
+                        <h4>Period:</h4>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-control"  id='periodList' name='periodList' >
+                        </select>
+                    </div>
+                </div> <!--row-->
+                <div class="card-header">
+                    STOCK CHART
+                </div>
+                <div class="card-body" style="height: 400px;">
+                    <canvas id="myStockChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
         <!--  Legs Dyanmically Created-->
         <div id="legsDiv"></div>
-        <!-- CHART -->
+        <!-- PNL CHART -->
         <div class="container mt-4">
             <div class="card" id="myChartContainer" style="display: none;">
                 <div class="card-header">
@@ -94,7 +122,8 @@
             </div>
         </div>
         <!-- Future Profit Chart -->
-        <div style="max-height: 400px; max-width:3000px; overflow: scroll;">
+        <div id="myCanvasDiv" style="max-height: 400px; max-width:3000px; overflow: scroll;
+                    display: none;" >
             <canvas id="myCanvas"
                 style="border: 1px solid lightgray"
                 width="3000" height="800">
